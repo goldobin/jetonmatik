@@ -2,7 +2,7 @@
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d %level [%thread] %logger{16} \(%X{akkaSource}\) - %msg%n</pattern>
+            <pattern>%d %highlight(%level) [%thread] %magenta(%logger{16}) %cyan(%X{akkaSource}) - %msg%n</pattern>
         </encoder>
     </appender>
 
