@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import jetonmatik.server.actor.{Authorizer, Authenticator}
 import jetonmatik.server.model.oauth.{TokenResponse, TokenRequest}
+import jetonmatik.server.service.FormattedPublicKeyProvider
 import spray.routing._
 import spray.routing.authentication.{BasicAuth, UserPass}
 import spray.routing.directives._
@@ -15,6 +16,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 trait AuthorizerHttpService extends HttpService {
+  this: FormattedPublicKeyProvider =>
+
   import Authorizer._
   import Authenticator._
 
@@ -66,11 +69,7 @@ trait AuthorizerHttpService extends HttpService {
     } ~
     path("public-key") {
       get {
-        complete {
-          (authorizer ? RetrieveFormattedPublicKey) map {
-            case FormattedPublicKey(key) => key
-          }
-        }
+        complete(formattedPublicKey)
       }
     }
   }

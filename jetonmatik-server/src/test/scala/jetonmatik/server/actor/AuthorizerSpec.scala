@@ -6,6 +6,7 @@ import akka.actor.Status.Failure
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestProbe, TestActorRef, ImplicitSender, TestKit}
 import akka.util.Timeout
+import jetonmatik.server.GeneratedKeys
 import jetonmatik.server.model.Client
 import jetonmatik.util.{Bytes, PasswordHash}
 import org.scalatest.mock.MockitoSugar
@@ -67,7 +68,6 @@ class AuthorizerSpec
 
     lazy val actor = TestActorRef(Props(
       new Authorizer(
-        keyPublic,
         clientStorageProbe.ref,
         accessTokenGeneratorProbe.ref)
         with TestNowProvider))
@@ -76,26 +76,6 @@ class AuthorizerSpec
   import Authorizer._
   import ClientStorage._
   import AccessTokenGenerator._
-
-
-  "Authorizer ! RetrieveFormattedPublicKey" should "respond with PEM formatted public key" in new ActorUnderTest {
-
-    val expectingBase64Key = Bytes.toBase64String(keyPublic.getEncoded)
-
-    actor ! RetrieveFormattedPublicKey
-
-    expectMsgPF() {
-      case FormattedPublicKey(text) =>
-        text should startWith ("-----BEGIN RSA PUBLIC KEY-----")
-        text should endWith ("-----END RSA PUBLIC KEY-----\n")
-
-        val lines = text.split("\n")
-
-        val keyText = lines.drop(1).dropRight(1).mkString("")
-
-        keyText should be (expectingBase64Key)
-    }
-  }
 
   "Authorizer ! GenerateToken" should "respond with token with intersected scope and token ttl" in new ActorUnderTest with ClientData {
 

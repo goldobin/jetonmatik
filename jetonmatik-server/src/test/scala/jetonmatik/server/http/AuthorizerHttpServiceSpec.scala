@@ -5,6 +5,7 @@ import akka.testkit.TestProbe
 import jetonmatik.server.actor.Authenticator.{Authentication, Authenticate}
 import jetonmatik.server.actor.Authorizer.{Token, GenerateToken}
 import jetonmatik.server.actor.{Authenticator, Authorizer}
+import jetonmatik.server.service.FormattedPublicKeyProvider
 import jetonmatik.util.Bytes
 import org.scalatest.{Matchers, FlatSpec}
 import spray.http.{FormData, BasicHttpCredentials}
@@ -13,20 +14,24 @@ import spray.routing.{AuthenticationFailedRejection, ValidationRejection, HttpSe
 import spray.testkit.ScalatestRouteTest
 import spray.http.StatusCodes._
 
+
 class AuthorizerHttpServiceSpec
   extends FlatSpec
   with Matchers
   with ScalatestRouteTest
   with AuthorizerHttpService
-  with HttpService {
+  with HttpService
+  with FormattedPublicKeyProvider {
 
   import fakes.Basic._
   import fakes.User._
   import fakes.Text._
   import fakes.OAuth._
 
+  override val formattedPublicKey: String = "Some formatted Public Key"
+
   def actorRefFactory = system
-  override val realm: String = "Test Backend"
+  override val realm: String = fakeHexString(2048)
 
   trait AuthData {
     val clientId = fakeUuid.toString
@@ -85,22 +90,14 @@ class AuthorizerHttpServiceSpec
 
   "AuthorizerHttpService's public-key route" should "produce plain text public key" in {
 
-    val publicKeyText = fakeHexString(2048)
-
     val authenticator = TestProbe().ref
-    val authorizer = system.actorOf(Props(new Actor {
-      import Authorizer._
-
-      override def receive: Receive = {
-        case RetrieveFormattedPublicKey => sender() ! FormattedPublicKey(publicKeyText)
-      }
-    }))
+    val authorizer = TestProbe().ref
 
     val route = authorizerRoute(authenticator, authorizer)
 
     Get("/public-key") ~> route ~> check {
       status shouldBe OK
-      responseAs[String] should be (publicKeyText)
+      responseAs[String] should be (formattedPublicKey)
     }
   }
 

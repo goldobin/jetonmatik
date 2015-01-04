@@ -1,14 +1,11 @@
 package jetonmatik.server.actor
 
-import java.io.StringWriter
-import java.security.{PublicKey, Key}
 import java.time.{Duration, ZoneOffset}
 
 import akka.actor.{Props, ActorRef, Actor, ActorLogging}
 import akka.pattern.ask
 import akka.pattern.pipe
 import akka.util.Timeout
-import org.bouncycastle.util.io.pem.{PemObject, PemWriter}
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration._
@@ -29,22 +26,14 @@ object Authorizer {
     require(expiresIn > 0)
   }
 
-  case object RetrieveFormattedPublicKey
-
-  case class FormattedPublicKey(key: String) {
-    require(key.nonEmpty)
-  }
-
   def props(
-    publicKey: PublicKey,
     clientStorage: ActorRef,
     accessTokenGenerator: ActorRef) = Props(
-    new Authorizer(publicKey, clientStorage, accessTokenGenerator)
+    new Authorizer(clientStorage, accessTokenGenerator)
       with LocalNowProvider)
 }
 
 class Authorizer(
-  publicKey: PublicKey,
   clientStorage: ActorRef,
   accessTokenGenerator: ActorRef)
   extends Actor
@@ -54,28 +43,7 @@ class Authorizer(
 
   import jetonmatik.server.actor.Authorizer._
 
-  val keyPairAlgorithm = "RSA"
-  val pemPublicKeyHeader = "RSA PUBLIC KEY"
-
-  val formattedPublicKey =
-    formatKey(
-      pemPublicKeyHeader,
-      publicKey)
-
-  private def formatKey(header: String, key: Key): String = {
-    val writer = new StringWriter()
-    val pemWriter = new PemWriter(writer)
-    pemWriter.writeObject(new PemObject(pemPublicKeyHeader, key.getEncoded))
-    pemWriter.flush()
-    pemWriter.close()
-
-    writer.toString
-  }
-
   override def receive: Receive = {
-    case RetrieveFormattedPublicKey =>
-      sender() ! FormattedPublicKey(formattedPublicKey)
-
     case GenerateToken(clientId, scope) =>
 
       val originalSender = sender()

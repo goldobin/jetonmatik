@@ -6,6 +6,7 @@ import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestActorRef, ImplicitSender, TestKit}
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jwt.SignedJWT
+import jetonmatik.server.GeneratedKeys
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
 
@@ -41,7 +42,7 @@ class AccessTokenGeneratorSpec
   trait ActorUnderTest extends GeneratedKeys {
     val issuer = fakeHttpsUrl
 
-    lazy val actor = TestActorRef(Props(new AccessTokenGenerator(keyPrivate, issuer)))
+    lazy val actor = TestActorRef(Props(new AccessTokenGenerator(rsaPrivateKey, issuer)))
   }
 
   "AccessTokenGenerator" should "generate valid token" in new ActorUnderTest with TokenData {
@@ -57,7 +58,7 @@ class AccessTokenGeneratorSpec
 
     expectMsgPF() {
       case AccessToken(accessToken) =>
-        val verifier = new RSASSAVerifier(keyPublic)
+        val verifier = new RSASSAVerifier(rsaPublicKey)
         val signedJwt = SignedJWT.parse(accessToken)
 
         val json = signedJwt.getPayload.toJSONObject
