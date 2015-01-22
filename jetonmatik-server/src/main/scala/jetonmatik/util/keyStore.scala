@@ -56,16 +56,16 @@ class JcaKeyStoreWrapper(keyStore: JcaKeyStore) extends KeyStore {
 
   override def obtainKey(alias: String, password: String): Key = {
     val key = keyStore.getKey(alias, password.toCharArray)
-    if (key != null) key
-    else throw new IllegalArgumentException(
-      s"The key with alias '$alias' not found in key store. Incorrect alias or password")
+    assume(key != null, s"The key with alias '$alias' not found in key store. Incorrect alias or password")
+
+    key
   }
 
   override def obtainCertificate(alias: String): Certificate = {
     val cert = keyStore.getCertificate(alias)
-    if (cert != null) cert
-    else throw new IllegalArgumentException(
-      s"The certificate with alias '$alias' not found in key store. Incorrect alias")
+    assume(cert != null, s"The certificate with alias '$alias' not found in key store. Incorrect alias")
+
+    cert
   }
 }
 

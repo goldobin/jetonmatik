@@ -21,6 +21,7 @@ class ClientsParseException(message: String = null, cause: Throwable = null)
   ) {
 }
 
+// TODO: Write unit test
 trait YamlClientsProvider extends ClientsProvider {
 
   private val yaml = new Yaml()

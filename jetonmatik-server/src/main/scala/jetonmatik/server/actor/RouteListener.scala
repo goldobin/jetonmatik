@@ -46,7 +46,8 @@ class RouteListener(settings: ServerSettings)
         ClientStorage.props(YamlClientsProvider(path).obtainClients()),
         "client-storage")
     case None =>
-      throw new AssertionError("Clients file should be defined")
+      // TODO: This should be removed as soon as additional storage support added
+      throw new UnsupportedOperationException("Clients file configuration is mandatory for this version")
   }
 
   val accessTokenGenerator = context.actorOf(

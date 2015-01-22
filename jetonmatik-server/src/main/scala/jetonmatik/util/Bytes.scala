@@ -6,7 +6,7 @@ import java.util.{Base64, UUID}
 import akka.util.ByteString
 
 /*
- * Based on sbt.Hash object
+ * Parts of code has been taken from sbt.Hash object
  * http://www.scala-sbt.org/0.13.2/sxr/sbt/Hash.scala.html
  * Copyright 2009 Mark Harrah
  */
@@ -38,7 +38,7 @@ object Bytes {
   /** Converts the provided hexadecimal representation `hex` to an array of bytes.
     * The hexadecimal representation must have an even number of characters in the range 0-9, a-f, or A-F. */
   def parseHexString(hex: String): Array[Byte] = {
-    require((hex.length & 1) == 0, "Hex string must have length 2n.")
+    require((hex.length & 1) == 0, "Hex string should have length 2*n")
     val array = new Array[Byte](hex.length >> 1)
     for (i <- 0 until hex.length by 2) {
       val c1 = hex.charAt(i)
@@ -64,7 +64,7 @@ object Bytes {
   }
 
   private def toHexChar(b: Byte): Char = {
-    require(b >= 0 && b <= 15, "Byte " + b + " was not between 0 and 15")
+    assert(b >= 0 && b <= 15, "Byte should be in range from 0x0 to 0xf")
     if (b < 10)
       ('0'.asInstanceOf[Int] + b).asInstanceOf[Char]
     else
@@ -80,7 +80,7 @@ object Bytes {
       else if (c >= 'A' && c <= 'F')
         (c - 'A') + 10
       else
-        throw new RuntimeException("Invalid hex character: '" + c + "'.")
+        throw new IllegalArgumentException(s"Not a hex character: '$c'")
     b
   }
 }

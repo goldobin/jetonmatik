@@ -14,6 +14,7 @@ import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
+import language._
 
 trait AuthorizerHttpService extends HttpService {
   this: FormattedPublicKeyProvider =>
@@ -56,12 +57,13 @@ trait AuthorizerHttpService extends HttpService {
 
                 import jetonmatik.json4s.Implicits._
 
-                complete(
-                  TokenResponse.Token(
-                    "Bearer",
-                    accessToken,
-                    scopeOption,
-                    expiresIn))
+                val tokenResponse = TokenResponse.Token(
+                  "Bearer",
+                  accessToken,
+                  scopeOption,
+                  expiresIn)
+
+                complete(tokenResponse)
             }
           }
         }
