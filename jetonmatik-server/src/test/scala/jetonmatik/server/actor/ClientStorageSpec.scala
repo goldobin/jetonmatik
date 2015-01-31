@@ -25,8 +25,8 @@ class ClientStorageSpec
   trait Clients {
     val clients = List.fill(10) {
       new Client(
-        clientId = fakeUuid.toString,
-        clientSecretHash = fakeHexString(16),
+        id = fakeUuid.toString,
+        secretHash = fakeHexString(16),
         name = fakeFullName
       )
     }.toSet
@@ -44,26 +44,26 @@ class ClientStorageSpec
     override lazy val preProvisionedClients = clients
 
     for (client <- Random.shuffle(clients)) {
-      actor ! Read(client.clientId)
+      actor ! LoadClient(client.id)
     }
 
-    val expectedMessages = for (client <- clients) yield ReadResult(Some(client))
+    val expectedMessages = for (client <- clients) yield ClientLoaded(Some(client))
 
     expectMsgAllOf(expectedMessages.toArray:_*)
   }
 
   it should "respond with None if no clients pre provisioned" in new ActorUnderTest {
 
-    actor ! Read(fakeUuid.toString)
+    actor ! LoadClient(fakeUuid.toString)
 
-    expectMsg(ReadResult(None))
+    expectMsg(ClientLoaded(None))
   }
 
   it should "respond with None if wrong clientId specified" in new ActorUnderTest with Clients {
     override lazy val preProvisionedClients = clients
 
-    actor ! Read(fakeUuid.toString)
+    actor ! LoadClient(fakeUuid.toString)
 
-    expectMsg(ReadResult(None))
+    expectMsg(ClientLoaded(None))
   }
 }

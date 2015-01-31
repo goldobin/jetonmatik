@@ -2,22 +2,18 @@ package jetonmatik.server.actor
 
 import java.time.{Duration, ZoneOffset}
 
-import akka.actor.{Props, ActorRef, Actor, ActorLogging}
-import akka.pattern.ask
-import akka.pattern.pipe
-import akka.util.Timeout
+import akka.actor._
+import jetonmatik.server.model.Client
 
-import scala.concurrent.ExecutionContext.Implicits._
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 
 object Authorizer {
-  case class GenerateToken(
-    clientId: String,
-    scope: Set[String]) {
-    require(clientId.nonEmpty)
-  }
+  case class Authorize(
+    client: Client,
+    scope: Set[String])
 
-  case class Token(
+  case class Authorized(
     accessToken: String,
     scope: Set[String],
     expiresIn: Long
@@ -26,70 +22,107 @@ object Authorizer {
     require(expiresIn > 0)
   }
 
-  def props(
-    clientStorage: ActorRef,
-    accessTokenGenerator: ActorRef) = Props(
-    new Authorizer(clientStorage, accessTokenGenerator)
-      with LocalNowProvider)
+  case object FailedToAuthorize
+
+  def props(accessTokenGenerator: ActorRef) = Props(
+    new Authorizer with AuthorizationWorkerPropsProvider {
+      lazy val authorizationWorkerProps: Props = AuthorizationWorker.props(accessTokenGenerator)
+    }
+  )
 }
 
-class Authorizer(
-  clientStorage: ActorRef,
-  accessTokenGenerator: ActorRef)
+class Authorizer
   extends Actor
   with ActorLogging {
 
-  self: NowProvider =>
+  this: AuthorizationWorkerPropsProvider =>
 
-  import jetonmatik.server.actor.Authorizer._
+  import Authorizer._
 
   override def receive: Receive = {
-    case GenerateToken(clientId, scope) =>
-
-      val originalSender = sender()
-
-      val accessTokenRequestFuture = {
-
-        implicit val timeout = Timeout(10.seconds)
-
-        for {
-          ClientStorage.ReadResult(Some(client)) <- clientStorage ? ClientStorage.Read(clientId)
-        }
-        yield {
-          val resultScope = scope.intersect(client.scope)
-          val issueTime = instant().atOffset(ZoneOffset.UTC)
-          val expirationTime = issueTime.plus(client.tokenTtl)
-
-          AccessTokenGenerator.GenerateAccessToken(
-            clientId,
-            resultScope,
-            issueTime,
-            expirationTime)
-        }
-      }
-
-      val accessTokenFuture = {
-
-        implicit val timeout = Timeout(5.seconds)
-
-        for {
-          accessTokenRequest <- accessTokenRequestFuture
-          AccessTokenGenerator.AccessToken(accessToken) <- accessTokenGenerator ? accessTokenRequest
-        } yield {
-          val validityDuration = Duration.between(
-            accessTokenRequest.issueTime,
-            accessTokenRequest.expirationTime)
-
-          assume(!validityDuration.isNegative)
-
-          Token(
-            accessToken = accessToken,
-            accessTokenRequest.scope,
-            expiresIn = validityDuration.getSeconds
-          )
-        }
-      }
-
-      accessTokenFuture pipeTo originalSender
+    case msg: Authorize =>
+      val worker = context.actorOf(authorizationWorkerProps)
+      worker forward msg
   }
 }
+
+trait AuthorizationWorkerPropsProvider {
+  def authorizationWorkerProps: Props
+}
+
+object AuthorizationWorker {
+  val GenerationTimeout: FiniteDuration = 1.minute
+
+  case object TokenGenerationTimedOut
+
+  def props(accessTokenGenerator: ActorRef) = Props(
+    new AuthorizationWorker(accessTokenGenerator, GenerationTimeout) with LocalNowProvider
+  )
+}
+
+class AuthorizationWorker(
+  accessTokenGenerator: ActorRef,
+  timeout: FiniteDuration)
+  extends Actor
+  with ActorLogging {
+
+  this: NowProvider =>
+
+  import Authorizer._
+  import AuthorizationWorker._
+  import AccessTokenGenerator._
+
+  override def receive: Receive = {
+    case Authorize(client, requestedScope) =>
+      context.become(generateAccessToken(client, requestedScope, sender()))
+  }
+
+  def generateAccessToken(
+    client: Client,
+    requestedScope: Set[String],
+    originalSender: ActorRef): Receive = {
+
+    import context.dispatcher
+    val timeoutCancelable = context.system.scheduler.scheduleOnce(timeout, self, TokenGenerationTimedOut)
+
+    val resultScope = requestedScope.intersect(client.scope)
+    val issueTime = instant().atOffset(ZoneOffset.UTC)
+    val expirationTime = issueTime.plus(client.tokenTtl)
+
+    accessTokenGenerator ! AccessTokenGenerator.Generate(
+      client.id,
+      resultScope,
+      issueTime,
+      expirationTime
+    )
+
+    {
+      case Generated(accessToken) =>
+        timeoutCancelable.cancel()
+
+        val validityDuration = Duration.between(
+          issueTime,
+          expirationTime)
+
+        assume(!validityDuration.isNegative)
+
+        originalSender ! Authorized(
+          accessToken = accessToken,
+          resultScope,
+          expiresIn = validityDuration.getSeconds
+        )
+
+        log.debug(s"Access token for client ${client.id} successfully generated with scope ${resultScope.mkString(",")}")
+        stop()
+
+      case TokenGenerationTimedOut =>
+        originalSender ! FailedToAuthorize
+        log.error(s"Access token for client ${client.id} is failed to be generated within $timeout")
+
+        stop()
+    }
+  }
+
+  def stop(): Unit = context.stop(self)
+}
+

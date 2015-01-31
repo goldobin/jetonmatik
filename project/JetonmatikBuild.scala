@@ -1,5 +1,6 @@
 import sbt.Keys._
 import sbt._
+import spray.revolver.RevolverPlugin._
 
 object JetonmatikBuild extends Build {
 
@@ -8,9 +9,7 @@ object JetonmatikBuild extends Build {
   lazy val buildSettings = Defaults.coreDefaultSettings ++ Seq(
     organization  := "io.github.goldobin",
     version       := "0.1-SNAPSHOT",
-    scalaVersion  := Dependencies.Versions.scalaVersion,
-
-    resolvers     += "spray repo" at "http://repo.spray.io"
+    scalaVersion  := Dependencies.Versions.scalaVersion
   )
 
   lazy val root = Project(
@@ -22,9 +21,9 @@ object JetonmatikBuild extends Build {
   lazy val server = Project(
     id = "jetonmatik-server",
     base = file("jetonmatik-server"),
-    settings = buildSettings ++ serverPackageSettings ++ Seq(
-      libraryDependencies ++= Dependencies.server,
-      mainClass := Some("jetonmatik.server.Boot")
+    settings = buildSettings ++ Revolver.settings ++ serverPackageSettings ++ Seq(
+      mainClass in Compile := Some("jetonmatik.server.Boot"),
+      libraryDependencies ++= Dependencies.server
     )
   )
 }

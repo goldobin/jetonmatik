@@ -10,7 +10,7 @@ import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.{SignedJWT, JWTClaimsSet}
 
 object AccessTokenGenerator {
-  case class GenerateAccessToken(
+  case class Generate(
     clientId: String,
     scope: Set[String],
     issueTime: OffsetDateTime,
@@ -20,7 +20,7 @@ object AccessTokenGenerator {
     require(expirationTime.compareTo(issueTime) > 0)
   }
 
-  case class AccessToken(accessToken: String) {
+  case class Generated(accessToken: String) {
     require(accessToken.nonEmpty)
   }
 
@@ -38,7 +38,7 @@ class AccessTokenGenerator(
   import AccessTokenGenerator._
 
   override def receive: Receive = {
-    case GenerateAccessToken(clientId, scope, issueTime, expirationTime) =>
+    case Generate(clientId, scope, issueTime, expirationTime) =>
       val signer = new RSASSASigner(privateKey)
 
       val claimsSet = new JWTClaimsSet()
@@ -60,6 +60,6 @@ class AccessTokenGenerator(
 
       val accessToken = signedJwt.serialize()
 
-      sender() ! AccessToken(accessToken)
+      sender() ! Generated(accessToken)
   }
 }

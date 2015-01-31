@@ -2,10 +2,8 @@ package jetonmatik.server.actor
 
 import java.time.Instant
 
-import akka.actor.Status.Failure
 import akka.actor.{Props, ActorSystem}
 import akka.testkit.{TestProbe, TestActorRef, ImplicitSender, TestKit}
-import akka.util.Timeout
 import jetonmatik.server.GeneratedKeys
 import jetonmatik.server.model.Client
 import jetonmatik.util.{Bytes, PasswordHash}
@@ -46,8 +44,8 @@ class AuthorizerSpec
     val clientScope = fakeScopeSet()
 
     val client = Client(
-      clientId = clientId,
-      clientSecretHash = clientSecretHash,
+      id = clientId,
+      secretHash = clientSecretHash,
       name = clientName,
       scope = clientScope,
       tokenTtl = clientTokenTtl
@@ -56,21 +54,21 @@ class AuthorizerSpec
 
   trait ActorUnderTest extends GeneratedKeys {
 
-    val clientStorageProbe = TestProbe()
     val accessTokenGeneratorProbe = TestProbe()
-
     val now = fakeInstant
 
     trait TestNowProvider extends NowProvider {
       override def instant(): Instant = now
     }
 
+    val timeout = 1.second
 
     lazy val actor = TestActorRef(Props(
-      new Authorizer(
-        clientStorageProbe.ref,
-        accessTokenGeneratorProbe.ref)
-        with TestNowProvider))
+      new Authorizer with AuthorizationWorkerPropsProvider {
+        lazy val authorizationWorkerProps: Props =
+          Props(new AuthorizationWorker(accessTokenGeneratorProbe.ref, timeout) with TestNowProvider)
+      }
+    ))
   }
 
   import Authorizer._
@@ -82,61 +80,38 @@ class AuthorizerSpec
     val scope = Random.shuffle(fakeScopeSet(12) ++ clientScope)
     val requestScope = scope.take(8).toSet
 
-    val accessToken = Bytes.toBase64String(fakeByteArray()())
+    val accessToken = Bytes.toBase64String(fakeByteArray(3)())
 
-    actor ! GenerateToken(
-      clientId = clientId,
+    actor ! Authorize(
+      client = client.copy(scope = clientScope),
       scope = requestScope
     )
 
-    clientStorageProbe.expectMsg(Read(clientId))
-    clientStorageProbe.reply(ReadResult(Some(client)))
-
     accessTokenGeneratorProbe.expectMsgPF() {
-      case GenerateAccessToken(resultClientId, resultScope, resultIssueTime, resultExpirationTime) =>
+      case Generate(resultClientId, resultScope, resultIssueTime, resultExpirationTime) =>
         resultClientId should be (clientId)
         resultScope should be (requestScope intersect clientScope)
 
         resultIssueTime.toInstant should be (now)
         resultExpirationTime.toInstant should be (now.plus(clientTokenTtl))
     }
-    accessTokenGeneratorProbe.reply(AccessToken(accessToken))
+    accessTokenGeneratorProbe.reply(Generated(accessToken))
 
-    expectMsg(Token(
+    expectMsg(Authorized(
       accessToken,
       requestScope intersect clientScope,
       clientTokenTtlSeconds))
   }
 
-  it should "respond with failure if client not found in storage" in new ActorUnderTest with ClientData {
-    actor ! GenerateToken(clientId, clientScope)
 
-    clientStorageProbe.expectMsgType[Read]
-    clientStorageProbe.reply(ReadResult(None))
+  it should "respond with failure if token generator timed out to respond" in new ActorUnderTest with ClientData {
 
-    accessTokenGeneratorProbe.expectNoMsg()
+    override val timeout = 1.milli
 
-    expectMsgType[Failure]
-  }
+    actor ! Authorize(client, clientScope)
 
-  ignore should "respond with failure if client storage timed out to respond" in new ActorUnderTest with ClientData {
-    actor ! GenerateToken(clientId, clientScope)
+    accessTokenGeneratorProbe.expectMsgType[Generate]
 
-    clientStorageProbe.expectMsgType[Read]
-    accessTokenGeneratorProbe.expectNoMsg()
-
-    expectMsgType[Failure]
-  }
-
-  ignore should "respond with failure if token generator timed out to respond" in new ActorUnderTest with ClientData {
-
-    actor ! GenerateToken(clientId, clientScope)
-
-    clientStorageProbe.expectMsgType[Read]
-    clientStorageProbe.reply(ReadResult(Some(client)))
-
-    accessTokenGeneratorProbe.expectMsgType[GenerateAccessToken]
-
-    expectMsgType[Failure]
+    expectMsg(FailedToAuthorize)
   }
 }

@@ -2,10 +2,12 @@ package jetonmatik.server.actor
 
 import akka.actor.{Props, ActorSystem}
 import akka.testkit._
-import jetonmatik.server.model.Client
+import jetonmatik.server.model.{ClientCredentials, Client}
 import jetonmatik.util.PasswordHash
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+
+import scala.concurrent.duration._
 
 class AuthenticatorSpec
   extends TestKit(ActorSystem("AuthenticatorSpec"))
@@ -14,7 +16,6 @@ class AuthenticatorSpec
   with Matchers
   with MockitoSugar
   with BeforeAndAfterAll {
-
 
   import fakes.Basic._
   import fakes.User._
@@ -32,9 +33,14 @@ class AuthenticatorSpec
 
   trait ActorUnderTest {
     val clientStorageProbe = TestProbe()
+    val timeout = 1.second
 
-    lazy val actor = TestActorRef(
-      Props(new Authenticator(clientStorageProbe.ref)))
+    lazy val actor = TestActorRef(Props(
+      new Authenticator with AuthenticationWorkerProvider {
+        lazy val authenticationWorkerProps: Props =
+          Props(new AuthenticationWorker(clientStorageProbe.ref, 1.second))
+      }
+    ))
   }
 
   import Authenticator._
@@ -42,45 +48,49 @@ class AuthenticatorSpec
 
   "Authenticator" should "authenticate existing client if secret is correct" in new ActorUnderTest with ClientData {
 
-    actor ! Authenticate(clientId, clientSecret)
+    val clientOption = Some(Client(
+      id = clientId,
+      secretHash = clientSecretHash
+    ))
 
-    clientStorageProbe.expectMsg(Read(clientId))
-    clientStorageProbe.reply(ReadResult(Some(Client(
-      clientId = clientId,
-      clientSecretHash = clientSecretHash
-    ))))
+    actor ! Authenticate(ClientCredentials(clientId, clientSecret))
 
-    expectMsg(Authentication(authenticated = true))
+    clientStorageProbe.expectMsg(LoadClient(clientId))
+    clientStorageProbe.reply(ClientLoaded(clientOption))
+
+    expectMsg(Authenticated(clientOption))
   }
 
   it should "not authenticate existing client if secret is incorrect" in new ActorUnderTest with ClientData {
-    actor ! Authenticate(clientId, clientSecret)
 
-    clientStorageProbe.expectMsg(Read(clientId))
-    clientStorageProbe.reply(ReadResult(Some(Client(
-      clientId = clientId,
-      clientSecretHash = fakePassword
+    actor ! Authenticate(ClientCredentials(clientId, clientSecret))
+
+    clientStorageProbe.expectMsg(LoadClient(clientId))
+    clientStorageProbe.reply(ClientLoaded(Some(Client(
+      id = clientId,
+      secretHash = "some incorrect secret hash"
     ))))
 
-    expectMsg(Authentication(authenticated = false))
+    expectMsg(Authenticated(None))
   }
 
   it should "not authenticate not existing client" in new ActorUnderTest with ClientData {
-    actor ! Authenticate(clientId, clientSecret)
+    actor ! Authenticate(ClientCredentials(clientId, clientSecret))
 
-    clientStorageProbe.expectMsg(Read(clientId))
-    clientStorageProbe.reply(ReadResult(None))
+    clientStorageProbe.expectMsg(LoadClient(clientId))
+    clientStorageProbe.reply(ClientLoaded(None))
 
-    expectMsg(Authentication(authenticated = false))
+    expectMsg(Authenticated(None))
   }
 
-  ignore should "not authenticate if storage timed out to respond" in new ActorUnderTest with ClientData {
+  it should "not authenticate if storage timed out to respond" in new ActorUnderTest with ClientData {
+    override val timeout: FiniteDuration = 1.milli
 
-    actor ! Authenticate(clientId, clientSecret)
+    actor ! Authenticate(ClientCredentials(clientId, clientSecret))
 
-    clientStorageProbe.expectMsg(Read(clientId))
+    clientStorageProbe.expectMsg(LoadClient(clientId))
 
-    expectMsg(Authentication(authenticated = false))
+    expectMsg(FailedToAuthenticate)
   }
 
 }

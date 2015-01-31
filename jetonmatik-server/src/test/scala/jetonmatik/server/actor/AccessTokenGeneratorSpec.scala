@@ -49,7 +49,7 @@ class AccessTokenGeneratorSpec
 
     import AccessTokenGenerator._
 
-    actor ! GenerateAccessToken(
+    actor ! Generate(
       clientId = clientId,
       scope = scope,
       issueTime = issueTime,
@@ -57,7 +57,7 @@ class AccessTokenGeneratorSpec
     )
 
     expectMsgPF() {
-      case AccessToken(accessToken) =>
+      case Generated(accessToken) =>
         val verifier = new RSASSAVerifier(rsaPublicKey)
         val signedJwt = SignedJWT.parse(accessToken)
 

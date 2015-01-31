@@ -1,59 +1,102 @@
 package jetonmatik.server.actor
 
-import java.util.concurrent.TimeoutException
-
-import akka.actor.{ActorLogging, ActorRef, Actor, Props}
-import akka.pattern.ask
-import akka.util.Timeout
+import akka.actor._
+import jetonmatik.server.model.{ClientCredentials, Client}
 import jetonmatik.util.PasswordHash
 
-import scala.util.control.NonFatal
-import scala.concurrent.ExecutionContext.Implicits._
-import scala.util.{Success, Failure}
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 object Authenticator {
-  case class Authenticate(
-    clientId: String,
-    clientSecret: String
-  )
+  case class Authenticate(credentials: ClientCredentials)
+  case class Authenticated(clientOption: Option[Client])
+  case object FailedToAuthenticate
 
-  case class Authentication(
-    authenticated: Boolean
+  def props(clientStorage: ActorRef): Props = Props(new Authenticator with AuthenticationWorkerProvider {
+      lazy val authenticationWorkerProps = AuthenticationWorker.props(clientStorage)
+    }
   )
-
-  def props(
-    clientStorage: ActorRef): Props = Props(new Authenticator(clientStorage))
 }
 
-class  Authenticator(
-  clientStorage: ActorRef) extends Actor with ActorLogging {
+class Authenticator extends Actor with ActorLogging {
+  this: AuthenticationWorkerProvider =>
 
-  import jetonmatik.server.actor.Authenticator._
-  import jetonmatik.server.actor.ClientStorage._
+  import Authenticator._
 
   override def receive: Receive = {
-    case Authenticate(clientId, clientSecret) =>
-
-      val originalSender = sender()
-
-      implicit val timeout = Timeout(10.seconds)
-
-      (clientStorage ? Read(clientId)) map {
-        case ReadResult(Some(client)) => PasswordHash.validatePassword(clientSecret, client.clientSecretHash)
-        case _ => false
-      } onComplete {
-        case Success(authenticated) => originalSender ! Authentication(authenticated = authenticated)
-        case Failure(t) =>
-          t match {
-            case e: TimeoutException =>
-              log.error(e, s"The request to for client=$clientId to client storage was timed out.")
-            case NonFatal(e) =>
-              log.error(e, s"An error occurred while authenticating client=$clientId")
-          }
-
-          originalSender ! Authentication(authenticated = false)
-      }
+    case msg: Authenticate =>
+      val retriever = context.actorOf(authenticationWorkerProps)
+      retriever forward msg
   }
 }
 
+trait AuthenticationWorkerProvider {
+  def authenticationWorkerProps: Props
+}
+
+protected object AuthenticationWorker {
+  val LoadTimeout: FiniteDuration = 1.minute
+
+  protected case object ClientRetrievalTimedOut
+
+  def props(clientStorage: ActorRef) = Props(new AuthenticationWorker(clientStorage, LoadTimeout))
+}
+
+case class AuthenticationWorker(
+  clientStorage: ActorRef,
+  timeout: FiniteDuration)
+  extends Actor
+  with ActorLogging {
+
+  import Authenticator._
+  import AuthenticationWorker._
+  import ClientStorage._
+
+  override def receive: Receive = {
+    case Authenticate(credentials) => context.become(loadAndValidateClient(credentials, sender()))
+  }
+
+  private def loadAndValidateClient(credentials: ClientCredentials, originalSender: ActorRef): Receive = {
+    clientStorage ! LoadClient(credentials.id)
+
+    import context.dispatcher
+    val timeoutCancelable = context.system.scheduler.scheduleOnce(timeout, self, ClientRetrievalTimedOut)
+
+    {
+      case ClientLoaded(clientOption) =>
+        timeoutCancelable.cancel()
+
+        val validatedClientOption = clientOption filter { client =>
+          try {
+            PasswordHash.validatePassword(credentials.secret, client.secretHash)
+          } catch {
+            case NonFatal(e) => {
+              log.warning(s"Can't validate client secret hash for Client(id=${client.id})")
+              false
+            }
+          }
+        }
+
+        originalSender ! Authenticator.Authenticated(validatedClientOption)
+
+        log.debug(s"The client ${credentials.id} successfully authenticated")
+        stop()
+
+      case FailedToLoadClient =>
+        timeoutCancelable.cancel()
+
+        originalSender ! Authenticator.FailedToAuthenticate
+
+        log.error(s"The client ${credentials.id} is failed to be loaded due to storage error")
+        stop()
+
+      case ClientRetrievalTimedOut =>
+        originalSender ! Authenticator.FailedToAuthenticate
+
+        log.error(s"The client ${credentials.id} is failed to be loaded within $timeout")
+        stop()
+    }
+  }
+
+  private def stop() = context.stop(self)
+}

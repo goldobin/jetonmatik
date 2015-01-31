@@ -81,8 +81,8 @@ trait YamlClientsProvider extends ClientsProvider {
       }
 
       Client(
-        clientId = obtainRequiredValue("clientId"),
-        clientSecretHash = obtainRequiredValue("clientSecretHash"),
+        id = obtainRequiredValue("clientId"),
+        secretHash = obtainRequiredValue("clientSecretHash"),
         name = obtainOptionalValue("name", ""),
         scope = scope,
         tokenTtl = tokenTtl

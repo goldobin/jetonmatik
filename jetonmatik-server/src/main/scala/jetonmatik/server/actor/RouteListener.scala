@@ -63,7 +63,7 @@ class RouteListener(settings: ServerSettings)
     "access-token-generator")
 
   val authorizer = context.actorOf(
-    Authorizer.props(clientStorage, accessTokenGenerator),
+    Authorizer.props(accessTokenGenerator),
     "authorizer")
 
   val authenticator = context.actorOf(

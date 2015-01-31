@@ -2,11 +2,12 @@ package jetonmatik.server.http
 
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
-import jetonmatik.server.actor.Authenticator.{Authentication, Authenticate}
-import jetonmatik.server.actor.Authorizer.{Token, GenerateToken}
+import jetonmatik.server.actor.Authenticator.{Authenticated, Authenticate}
+import jetonmatik.server.actor.Authorizer.{Authorized, Authorize}
 import jetonmatik.server.actor.{Authenticator, Authorizer}
+import jetonmatik.server.model.{ClientCredentials, Client}
 import jetonmatik.server.service.FormattedPublicKeyProvider
-import jetonmatik.util.Bytes
+import jetonmatik.util.{PasswordHash, Bytes}
 import org.scalatest.{Matchers, FlatSpec}
 import spray.http.{FormData, BasicHttpCredentials}
 import spray.http.HttpHeaders.Authorization
@@ -36,11 +37,19 @@ class AuthorizerHttpServiceSpec
   trait AuthData {
     val clientId = fakeUuid.toString
     val clientSecret = fakePassword
+    
+    val clientCredentials = ClientCredentials(clientId, clientSecret)
 
-    private val credentialsBase64 = Bytes.toBase64String(
+    private val httpCredentialsBase64Encoded = Bytes.toBase64String(
       (clientId + ":" + clientSecret).getBytes("UTF-8"))
+    val httpCredentials = BasicHttpCredentials(clientId, clientSecret)
+  }
 
-    val credentials = BasicHttpCredentials(clientId, clientSecret)
+  trait ClientData extends AuthData {
+    lazy val client = Client(
+      id = clientId,
+      secretHash = PasswordHash.createHash(clientSecret)
+    )
   }
 
   trait TokenData {
@@ -59,18 +68,17 @@ class AuthorizerHttpServiceSpec
 
   trait RouteUnderTestWithProbes {
     val authenticatorProbe = TestProbe()
-
     val authorizerProbe = TestProbe()
 
     lazy val route = authorizerRoute(authenticatorProbe.ref, authorizerProbe.ref)
   }
 
-  trait RouteUnderTest {
+  trait RouteUnderTest extends ClientData {
     val authenticator = system.actorOf(Props(new Actor {
       import Authenticator._
 
       override def receive: Receive = {
-        case Authenticate(_, _) => sender() ! Authentication(authenticated = true)
+        case Authenticate(_) => sender() ! Authenticated(Some(client))
       }
     }))
 
@@ -78,7 +86,7 @@ class AuthorizerHttpServiceSpec
       import Authorizer._
 
       override def receive: Receive = {
-        case GenerateToken(_, scope) => sender() ! Token(
+        case Authorize(_, scope) => sender() ! Authorized(
           fakeAccessToken,
           scope,
           fakeAccessTokenTtl.getSeconds)
@@ -111,7 +119,7 @@ class AuthorizerHttpServiceSpec
       ))
 
     Post("/token", tokenRequestData) ~>
-      addHeader(Authorization(credentials)) ~>
+      addHeader(Authorization(httpCredentials)) ~>
       route ~> check {
       status shouldBe OK
     }
@@ -122,7 +130,7 @@ class AuthorizerHttpServiceSpec
       import Authenticator._
 
       override def receive: Receive = {
-        case Authenticate(_, _) => sender() ! Authentication(authenticated = false)
+        case Authenticate(_) => sender() ! Authenticated(None)
       }
     }))
 
@@ -132,7 +140,7 @@ class AuthorizerHttpServiceSpec
       ))
 
     Post("/token", tokenRequestData) ~>
-      addHeader(Authorization(credentials)) ~>
+      addHeader(Authorization(httpCredentials)) ~>
       route ~> check {
       rejection shouldBe an [AuthenticationFailedRejection]
     }
@@ -146,67 +154,67 @@ class AuthorizerHttpServiceSpec
         ))
 
       Post("/token", tokenRequestData) ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route ~> check {
         rejection shouldBe a [ValidationRejection]
       }
     }
 
 
-  ignore should "accept GET and pass client credentials to underlying actor" in
-    new RouteUnderTestWithProbes with TokenData with AuthData {
+  ignore should "accept GET and pass client credentials to underlying actors" in
+    new RouteUnderTestWithProbes with TokenData with ClientData {
 
       Get(s"/token?grant_type=$validGrantType") ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route
 
       import Authenticator._
       import Authorizer._
 
-      authenticatorProbe.expectMsg(Authenticate(clientId, clientSecret))
-      authenticatorProbe.reply(Authentication(authenticated = true))
+      authenticatorProbe.expectMsg(Authenticate(clientCredentials))
+      authenticatorProbe.reply(Authenticated(Some(client)))
 
-      authorizerProbe.expectMsgType[GenerateToken]
-      authorizerProbe.reply(Token(token, scope2, expiresIn))
+      authorizerProbe.expectMsg(Authorize(client, Set.empty))
+      authorizerProbe.reply(Authorized(token, scope2, expiresIn))
     }
 
   it should "accept POST and pass client credentials to underlying actor" in
-    new RouteUnderTestWithProbes with TokenData with AuthData {
+    new RouteUnderTestWithProbes with TokenData with ClientData {
 
       Post(
         "/token",
         FormData(Map(
           "grant_type" -> validGrantType
         ))) ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route
 
-      authenticatorProbe.expectMsg(Authenticate(clientId, clientSecret))
-      authenticatorProbe.reply(Authentication(authenticated = true))
+      authenticatorProbe.expectMsg(Authenticate(clientCredentials))
+      authenticatorProbe.reply(Authenticated(Some(client)))
 
-      authorizerProbe.expectMsgType[GenerateToken]
-      authorizerProbe.reply(Token(token, scope2, expiresIn))
+      authorizerProbe.expectMsg(Authorize(client, Set.empty))
+      authorizerProbe.reply(Authorized(token, scope2, expiresIn))
     }
 
   ignore should "accept GET and pass scope to underlying actor" in
-    new RouteUnderTestWithProbes with TokenData with AuthData {
+    new RouteUnderTestWithProbes with TokenData with ClientData {
 
       Get(s"/token?grant_type=$validGrantType&scope=${scopeString.mkString("%20")}") ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route
 
       import Authenticator._
       import Authorizer._
 
-      authenticatorProbe.expectMsgType[Authenticate]
-      authenticatorProbe.reply(Authentication(authenticated = true))
+      authenticatorProbe.expectMsg(Authenticate(clientCredentials))
+      authenticatorProbe.reply(Authenticated(Some(client)))
 
-      authorizerProbe.expectMsg(GenerateToken(clientId, scope))
-      authorizerProbe.reply(Token(token, scope2, expiresIn))
+      authorizerProbe.expectMsg(Authorize(client, scope))
+      authorizerProbe.reply(Authorized(token, scope2, expiresIn))
     }
 
   it should "accept POST and pass scope to underlying actor" in
-    new RouteUnderTestWithProbes with TokenData with AuthData {
+    new RouteUnderTestWithProbes with TokenData with ClientData {
 
       Post(
         "/token",
@@ -214,54 +222,54 @@ class AuthorizerHttpServiceSpec
           "grant_type" -> validGrantType,
           "scope" -> scopeString
         ))) ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route
 
       import Authenticator._
       import Authorizer._
 
-      authenticatorProbe.expectMsgType[Authenticate]
-      authenticatorProbe.reply(Authentication(authenticated = true))
+      authenticatorProbe.expectMsg(Authenticate(clientCredentials))
+      authenticatorProbe.reply(Authenticated(Some(client)))
 
-      authorizerProbe.expectMsg(GenerateToken(clientId, scope))
-      authorizerProbe.reply(Token(token, scope2, expiresIn))
+      authorizerProbe.expectMsg(Authorize(client, scope))
+      authorizerProbe.reply(Authorized(token, scope2, expiresIn))
     }
 
   ignore should "accept GET and pass empty scope to underlying actor if scope is not specified" in
-    new RouteUnderTestWithProbes with TokenData with AuthData {
+    new RouteUnderTestWithProbes with TokenData with ClientData {
 
       Get(s"/token?grant_type=client_credentials") ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route
 
       import Authenticator._
       import Authorizer._
 
       authenticatorProbe.expectMsgType[Authenticate]
-      authenticatorProbe.reply(Authentication(authenticated = true))
+      authenticatorProbe.reply(Authenticated(Some(client)))
 
-      authorizerProbe.expectMsg(GenerateToken(clientId, Set.empty))
-      authorizerProbe.reply(Token(token, scope2, expiresIn))
+      authorizerProbe.expectMsg(Authorize(client, Set.empty))
+      authorizerProbe.reply(Authorized(token, scope2, expiresIn))
     }
 
   it should "accept POST and pass empty scope to underlying actor if scope is not specified" in
-    new RouteUnderTestWithProbes with TokenData with AuthData {
+    new RouteUnderTestWithProbes with TokenData with ClientData {
 
       Post(
         "/token",
         FormData(Map(
           "grant_type" -> validGrantType
         ))) ~>
-        addHeader(Authorization(credentials)) ~>
+        addHeader(Authorization(httpCredentials)) ~>
         route
 
       import Authenticator._
       import Authorizer._
 
       authenticatorProbe.expectMsgType[Authenticate]
-      authenticatorProbe.reply(Authentication(authenticated = true))
+      authenticatorProbe.reply(Authenticated(Some(client)))
 
-      authorizerProbe.expectMsg(GenerateToken(clientId, Set.empty))
-      authorizerProbe.reply(Token(token, scope2, expiresIn))
+      authorizerProbe.expectMsg(Authorize(client, Set.empty))
+      authorizerProbe.reply(Authorized(token, scope2, expiresIn))
     }
 }
