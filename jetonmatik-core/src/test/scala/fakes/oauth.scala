@@ -9,7 +9,7 @@ import scala.util.Random
 object OAuth {
 
   import Basic._
-  import Text._
+  import fakes.Text._
 
   def fakeAccessToken = List.fill(3) {
     Bytes.toBase64String(fakeByteArray(32)())

@@ -2,11 +2,12 @@ package jetonmatik.server.http
 
 import akka.actor.{Actor, ActorRef, Props}
 import akka.testkit.TestProbe
-import jetonmatik.server.actor.Authenticator.{Authenticated, Authenticate}
-import jetonmatik.server.actor.Authorizer.{Authorized, Authorize}
-import jetonmatik.server.actor.{Authenticator, Authorizer}
-import jetonmatik.server.model.{ClientCredentials, Client}
-import jetonmatik.server.service.FormattedPublicKeyProvider
+import fakes.{OAuth, Text, User, Basic}
+import jetonmatik.actor.{Authorizer, Authenticator}
+import jetonmatik.model.{ClientCredentials, Client}
+import jetonmatik.provider.FormattedPublicKeyProvider
+import Authenticator.{Authenticated, Authenticate}
+import Authorizer.{Authorized, Authorize}
 import jetonmatik.util.{PasswordHash, Bytes}
 import org.scalatest.{Matchers, FlatSpec}
 import spray.http.{FormData, BasicHttpCredentials}
@@ -24,10 +25,10 @@ class AuthorizerHttpServiceSpec
   with HttpService
   with FormattedPublicKeyProvider {
 
-  import fakes.Basic._
-  import fakes.User._
-  import fakes.Text._
-  import fakes.OAuth._
+  import Basic._
+  import User._
+  import Text._
+  import OAuth._
 
   override val formattedPublicKey: String = "Some formatted Public Key"
 

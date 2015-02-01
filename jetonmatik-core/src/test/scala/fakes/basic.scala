@@ -6,7 +6,6 @@ import java.util.UUID
 import akka.util.ByteString
 
 import scala.util.Random
-
 import scala.collection.JavaConverters._
 
 object Alphabet {
@@ -51,7 +50,7 @@ object Basic {
     ByteString(fakeByteSeq(n)(gen):_*)
   }
 
-  import Alphabet._
+  import fakes.Alphabet._
 
   def fakeCharString(n: Int)(alphabet: String = Alphanumeric): String =
     Stream.continually(Random.nextInt(alphabet.size)).map(alphabet).take(n).mkString
@@ -73,7 +72,7 @@ object Text {
 }
 
 object Time {
-  import Basic._
+  import fakes.Basic._
 
   def fakeInstant = Instant.ofEpochSecond(fakePositiveLong)
   def fakeDuration = Duration.ofSeconds(fakePositiveLong)
@@ -81,8 +80,8 @@ object Time {
 
 object Net {
 
-  import Util._
-  import Text._
+  import fakes.Text._
+  import fakes.Util._
 
   def fakeInternetDomain = oneOf("com", "org", "net")
   def fakeHost = s"$fakeWord.$fakeInternetDomain"

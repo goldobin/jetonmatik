@@ -1,7 +1,7 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
 import akka.actor._
-import jetonmatik.server.model.{ClientCredentials, Client}
+import jetonmatik.model.{Client, ClientCredentials}
 import jetonmatik.util.PasswordHash
 
 import scala.concurrent.duration._
@@ -21,7 +21,7 @@ object Authenticator {
 class Authenticator extends Actor with ActorLogging {
   this: AuthenticationWorkerProvider =>
 
-  import Authenticator._
+  import jetonmatik.actor.Authenticator._
 
   override def receive: Receive = {
     case msg: Authenticate =>
@@ -48,9 +48,9 @@ case class AuthenticationWorker(
   extends Actor
   with ActorLogging {
 
-  import Authenticator._
-  import AuthenticationWorker._
-  import ClientStorage._
+  import jetonmatik.actor.AuthenticationWorker._
+  import jetonmatik.actor.Authenticator._
+  import jetonmatik.actor.ClientStorage._
 
   override def receive: Receive = {
     case Authenticate(credentials) => context.become(loadAndValidateClient(credentials, sender()))
@@ -70,10 +70,9 @@ case class AuthenticationWorker(
           try {
             PasswordHash.validatePassword(credentials.secret, client.secretHash)
           } catch {
-            case NonFatal(e) => {
+            case NonFatal(e) =>
               log.warning(s"Can't validate client secret hash for Client(id=${client.id})")
               false
-            }
           }
         }
 

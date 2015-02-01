@@ -1,11 +1,11 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ActorSystem, Props}
 import akka.testkit._
-import jetonmatik.server.model.{ClientCredentials, Client}
+import fakes.{Basic, User}
+import jetonmatik.model.{Client, ClientCredentials}
 import jetonmatik.util.PasswordHash
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.concurrent.duration._
 
@@ -14,7 +14,6 @@ class AuthenticatorSpec
   with ImplicitSender
   with FlatSpecLike
   with Matchers
-  with MockitoSugar
   with BeforeAndAfterAll {
 
   import fakes.Basic._
@@ -43,8 +42,8 @@ class AuthenticatorSpec
     ))
   }
 
-  import Authenticator._
-  import ClientStorage._
+  import jetonmatik.actor.Authenticator._
+  import jetonmatik.actor.ClientStorage._
 
   "Authenticator" should "authenticate existing client if secret is correct" in new ActorUnderTest with ClientData {
 

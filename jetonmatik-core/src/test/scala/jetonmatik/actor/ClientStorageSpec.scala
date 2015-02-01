@@ -1,9 +1,10 @@
-package jetonmatik.server.actor
-import akka.actor.{Props, ActorSystem}
-import akka.testkit.{TestActorRef, ImplicitSender, TestKit}
-import jetonmatik.server.model.Client
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+package jetonmatik.actor
+
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
+import fakes.{Basic, User}
+import jetonmatik.model.Client
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.util.Random
 
@@ -12,7 +13,6 @@ class ClientStorageSpec
   with ImplicitSender
   with FlatSpecLike
   with Matchers
-  with MockitoSugar
   with BeforeAndAfterAll {
 
   import fakes.Basic._
@@ -38,7 +38,7 @@ class ClientStorageSpec
     lazy val actor = TestActorRef(Props(new ClientStorage(preProvisionedClients)))
   }
 
-  import ClientStorage._
+  import jetonmatik.actor.ClientStorage._
 
   "ClientStorage ! Read" should "respond with Some if pre provisioned clientId specified" in new ActorUnderTest with Clients {
     override lazy val preProvisionedClients = clients

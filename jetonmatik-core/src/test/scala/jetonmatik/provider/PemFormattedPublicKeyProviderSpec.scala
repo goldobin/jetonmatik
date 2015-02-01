@@ -1,9 +1,8 @@
-package jetonmatik.server.service
+package jetonmatik.provider
 
 import fakes.{Alphabet, Basic}
-import jetonmatik.server.GeneratedKeys
-import jetonmatik.util.Bytes
-import org.scalatest.{Matchers, FlatSpec}
+import jetonmatik.util.{GeneratedKeys, Bytes}
+import org.scalatest.{FlatSpec, Matchers}
 
 class PemFormattedPublicKeyProviderSpec extends FlatSpec with Matchers {
   "PemFormattedPublicKeyProvider" should "format key" in new PemFormattedPublicKeyProvider with GeneratedKeys {

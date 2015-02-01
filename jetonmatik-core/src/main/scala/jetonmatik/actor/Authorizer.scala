@@ -1,12 +1,12 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
 import java.time.{Duration, ZoneOffset}
 
 import akka.actor._
-import jetonmatik.server.model.Client
+import jetonmatik.model.Client
+import jetonmatik.provider.{LocalNowProvider, NowProvider}
 
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.duration._
+import scala.concurrent.duration.{FiniteDuration, _}
 
 object Authorizer {
   case class Authorize(
@@ -37,7 +37,7 @@ class Authorizer
 
   this: AuthorizationWorkerPropsProvider =>
 
-  import Authorizer._
+  import jetonmatik.actor.Authorizer._
 
   override def receive: Receive = {
     case msg: Authorize =>
@@ -68,9 +68,9 @@ class AuthorizationWorker(
 
   this: NowProvider =>
 
-  import Authorizer._
-  import AuthorizationWorker._
-  import AccessTokenGenerator._
+  import jetonmatik.actor.AccessTokenGenerator._
+  import jetonmatik.actor.AuthorizationWorker._
+  import jetonmatik.actor.Authorizer._
 
   override def receive: Receive = {
     case Authorize(client, requestedScope) =>

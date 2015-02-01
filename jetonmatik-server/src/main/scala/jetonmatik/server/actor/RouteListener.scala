@@ -5,9 +5,10 @@ import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{OneForOneStrategy, Actor, ActorRefFactory, Props}
 import akka.routing.RoundRobinPool
+import jetonmatik.actor.{ClientStorage, Authorizer, Authenticator, AccessTokenGenerator}
+import jetonmatik.provider.{PemFormattedPublicKeyProvider, YamlClientsProvider}
 import jetonmatik.server.http.AuthorizerHttpService
 import jetonmatik.server.ServerSettings
-import jetonmatik.server.service.{PemFormattedPublicKeyProvider, YamlClientsProvider}
 import jetonmatik.util.KeyStoreFactory
 
 object RouteListener {

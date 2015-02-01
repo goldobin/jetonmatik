@@ -1,13 +1,13 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
 import java.security.interfaces.RSAPrivateKey
 import java.time.OffsetDateTime
 import java.util.Date
 
-import akka.actor.{Props, Actor}
-import com.nimbusds.jose.{JWSAlgorithm, JWSHeader}
+import akka.actor.{Actor, Props}
 import com.nimbusds.jose.crypto.RSASSASigner
-import com.nimbusds.jwt.{SignedJWT, JWTClaimsSet}
+import com.nimbusds.jose.{JWSAlgorithm, JWSHeader}
+import com.nimbusds.jwt.{JWTClaimsSet, SignedJWT}
 
 object AccessTokenGenerator {
   case class Generate(
@@ -35,7 +35,7 @@ class AccessTokenGenerator(
   issuer: String)
   extends Actor {
 
-  import AccessTokenGenerator._
+  import jetonmatik.actor.AccessTokenGenerator._
 
   override def receive: Receive = {
     case Generate(clientId, scope, issueTime, expirationTime) =>

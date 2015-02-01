@@ -1,7 +1,7 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
-import akka.actor.{Props, ActorLogging, Actor}
-import jetonmatik.server.model.Client
+import akka.actor.{Actor, ActorLogging, Props}
+import jetonmatik.model.Client
 
 
 object ClientStorage {
@@ -18,7 +18,7 @@ object ClientStorage {
 
 class ClientStorage(clients: Set[Client]) extends Actor with ActorLogging {
 
-  import ClientStorage._
+  import jetonmatik.actor.ClientStorage._
 
   val predefinedClientsMap = (clients map { c => c.id -> c}).toMap
 

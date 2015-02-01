@@ -1,4 +1,4 @@
-package jetonmatik.server
+package jetonmatik.util
 
 import java.security.KeyPairGenerator
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}

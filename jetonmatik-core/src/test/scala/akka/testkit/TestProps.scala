@@ -1,7 +1,6 @@
-package jetonmatik.test
+package akka.testkit
 
 import akka.actor.{Actor, ActorRef, Props}
-import akka.testkit.TestProbe
 
 object TestProps {
 

@@ -1,28 +1,26 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
 import java.time.ZoneOffset
 
-import akka.actor.{Props, ActorSystem}
-import akka.testkit.{TestActorRef, ImplicitSender, TestKit}
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
 import com.nimbusds.jose.crypto.RSASSAVerifier
 import com.nimbusds.jwt.SignedJWT
-import jetonmatik.server.GeneratedKeys
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
-
+import fakes.{Basic, Net, OAuth, Time}
+import jetonmatik.util.GeneratedKeys
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 class AccessTokenGeneratorSpec
   extends TestKit(ActorSystem("AccessTokenGeneratorSpec"))
   with ImplicitSender
   with FlatSpecLike
   with Matchers
-  with MockitoSugar
   with BeforeAndAfterAll {
 
   import fakes.Basic._
+  import fakes.Net._
   import fakes.OAuth._
   import fakes.Time._
-  import fakes.Net._
 
   override def afterAll() {
     TestKit.shutdownActorSystem(system)
@@ -47,7 +45,7 @@ class AccessTokenGeneratorSpec
 
   "AccessTokenGenerator" should "generate valid token" in new ActorUnderTest with TokenData {
 
-    import AccessTokenGenerator._
+    import jetonmatik.actor.AccessTokenGenerator._
 
     actor ! Generate(
       clientId = clientId,

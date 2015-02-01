@@ -1,14 +1,14 @@
-package jetonmatik.server.service
+package jetonmatik.provider
 
 import java.io.Reader
 import java.nio.file.{Files, Path}
 import java.time.Duration
 
-import jetonmatik.server.model.Client
+import jetonmatik.model.Client
 import org.yaml.snakeyaml.Yaml
 
-import scala.util.control.NonFatal
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 trait ClientsProvider {
   def obtainClients(): Set[Client]

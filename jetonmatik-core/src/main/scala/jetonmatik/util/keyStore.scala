@@ -1,9 +1,9 @@
 package jetonmatik.util
 
 import java.io.ByteArrayInputStream
-import java.nio.file.{Path, Files}
+import java.nio.file.{Files, Path}
 import java.security.cert.Certificate
-import java.security.{KeyStore => JcaKeyStore, PublicKey, Key}
+import java.security.{Key, KeyStore => JcaKeyStore, PublicKey}
 
 import akka.util.ByteString
 

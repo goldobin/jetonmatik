@@ -3,9 +3,8 @@ package jetonmatik.server
 import java.nio.file.{Paths, Path}
 import java.time.Duration
 import java.util.concurrent.TimeUnit
-
-import jetonmatik.server.model.Client
 import com.typesafe.config.{ConfigFactory, Config}
+import jetonmatik.model.Client
 import scala.collection.JavaConverters._
 
 trait EndpointSettings {

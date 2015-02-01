@@ -1,17 +1,16 @@
-package jetonmatik.server.actor
+package jetonmatik.actor
 
 import java.time.Instant
 
-import akka.actor.{Props, ActorSystem}
-import akka.testkit.{TestProbe, TestActorRef, ImplicitSender, TestKit}
-import jetonmatik.server.GeneratedKeys
-import jetonmatik.server.model.Client
-import jetonmatik.util.{Bytes, PasswordHash}
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfterAll, Matchers, FlatSpecLike}
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestActorRef, TestKit, TestProbe}
+import fakes.{Basic, OAuth, Time, User}
+import jetonmatik.model.Client
+import jetonmatik.provider.NowProvider
+import jetonmatik.util.{GeneratedKeys, Bytes, PasswordHash}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.concurrent.duration._
-
 import scala.util.Random
 
 class AuthorizerSpec
@@ -19,14 +18,13 @@ class AuthorizerSpec
   with ImplicitSender
   with FlatSpecLike
   with Matchers
-  with MockitoSugar
   with BeforeAndAfterAll {
 
 
   import fakes.Basic._
-  import fakes.User._
-  import fakes.Time._
   import fakes.OAuth._
+  import fakes.Time._
+  import fakes.User._
 
   override def afterAll() {
     TestKit.shutdownActorSystem(system)
@@ -71,9 +69,8 @@ class AuthorizerSpec
     ))
   }
 
-  import Authorizer._
-  import ClientStorage._
-  import AccessTokenGenerator._
+  import jetonmatik.actor.AccessTokenGenerator._
+  import jetonmatik.actor.Authorizer._
 
   "Authorizer ! GenerateToken" should "respond with token with intersected scope and token ttl" in new ActorUnderTest with ClientData {
 

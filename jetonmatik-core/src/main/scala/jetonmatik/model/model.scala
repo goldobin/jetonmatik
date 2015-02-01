@@ -1,4 +1,4 @@
-package jetonmatik.server.model
+package jetonmatik.model
 
 import java.time.Duration
 
