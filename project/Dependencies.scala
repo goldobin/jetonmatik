@@ -14,22 +14,28 @@ object Dependencies {
   object Compile {
     import Versions._
 
-    val akkaActor       = "com.typesafe.akka"     %%  "akka-actor"            % akkaVersion
+    val scopt          = "com.github.scopt"       %%  "scopt"                 % "3.3.0"
 
-    val sprayCan        = "io.spray"              %%  "spray-can"             % sprayVersion
-    val sprayClient     = "io.spray"              %%  "spray-client"          % sprayVersion
-    val sprayRouting    = "io.spray"              %%  "spray-routing"         % sprayVersion
+    val akkaActor       = "com.typesafe.akka"     %% "akka-actor"             % akkaVersion
 
-    val json4sNative    = "org.json4s"            %%  "json4s-native"         % json4sVersion
+    val sprayCan        = "io.spray"              %% "spray-can"              % sprayVersion
+    val sprayClient     = "io.spray"              %% "spray-client"           % sprayVersion
+    val sprayRouting    = "io.spray"              %% "spray-routing"          % sprayVersion
 
-    val akkaSlf4j       = "com.typesafe.akka"     %%  "akka-slf4j"            % akkaVersion
-    val slf4j           = "org.slf4j"             %   "slf4j-api"             % slf4jVersion
-    val logback         = "ch.qos.logback"        %   "logback-classic"       % "1.1.2"
+    val json4sNative    = "org.json4s"            %% "json4s-native"          % json4sVersion
 
-    val nimbusJoseJwt   = "com.nimbusds"          %   "nimbus-jose-jwt"       % "3.1.2"
-    val snakeYaml       = "org.yaml"              %   "snakeyaml"             % "1.14"
+    val akkaSlf4j       = "com.typesafe.akka"     %% "akka-slf4j"             % akkaVersion
+    val slf4j           = "org.slf4j"             %  "slf4j-api"              % slf4jVersion
+    val logback         = "ch.qos.logback"        %  "logback-classic"        % "1.1.2"
+    val log4jOverSlf4j  = "org.slf4j"             %  "log4j-over-slf4j"       % slf4jVersion
 
-    val mysqlAsync      = "com.github.mauricio"   %%  "mysql-async"           % "0.2.15"
+    val nimbusJoseJwt   = "com.nimbusds"          %  "nimbus-jose-jwt"        % "3.1.2"
+    val snakeYaml       = "org.yaml"              %  "snakeyaml"              % "1.14"
+
+    val slick           = "com.typesafe.slick"    %% "slick"                  % "3.0.0-M1"
+
+    val c3p0            = "c3p0"                  %  "c3p0"                   % "0.9.1.2"
+    val mysqlDriver     = "mysql"                 %  "mysql-connector-java"   % "5.1.34"
   }
 
   object Test {
@@ -66,9 +72,13 @@ object Dependencies {
     Test.javaFaker
   )
 
-  lazy val mysql = Seq(
+  lazy val relational = Seq(
+    scopt,
     akkaActor,
-    mysqlAsync,
+    slick,
+    c3p0,
+    mysqlDriver,
+    log4jOverSlf4j,
     Test.scalatest,
     Test.akkaTestKit
   )

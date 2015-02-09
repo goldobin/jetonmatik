@@ -50,7 +50,7 @@ case class AuthenticationWorker(
 
   import jetonmatik.actor.AuthenticationWorker._
   import jetonmatik.actor.Authenticator._
-  import jetonmatik.actor.ClientStorage._
+  import jetonmatik.actor.storage.ClientStorage._
 
   override def receive: Receive = {
     case Authenticate(credentials) => context.become(loadAndValidateClient(credentials, sender()))
@@ -81,7 +81,7 @@ case class AuthenticationWorker(
         log.debug(s"The client ${credentials.id} successfully authenticated")
         stop()
 
-      case FailedToLoadClient =>
+      case StorageFailure =>
         timeoutCancelable.cancel()
 
         originalSender ! Authenticator.FailedToAuthenticate

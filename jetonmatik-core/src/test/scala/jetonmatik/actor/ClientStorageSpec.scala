@@ -2,7 +2,7 @@ package jetonmatik.actor
 
 import akka.actor.{ActorSystem, Props}
 import akka.testkit.{ImplicitSender, TestActorRef, TestKit}
-import fakes.{Basic, User}
+import jetonmatik.actor.storage.MemoryClientStorage
 import jetonmatik.model.Client
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
@@ -16,7 +16,6 @@ class ClientStorageSpec
   with BeforeAndAfterAll {
 
   import fakes.Basic._
-  import fakes.User._
 
   override def afterAll() {
     TestKit.shutdownActorSystem(system)
@@ -26,8 +25,7 @@ class ClientStorageSpec
     val clients = List.fill(10) {
       new Client(
         id = fakeUuid.toString,
-        secretHash = fakeHexString(16),
-        name = fakeFullName
+        secretHash = fakeHexString(16)
       )
     }.toSet
   }
@@ -35,10 +33,10 @@ class ClientStorageSpec
   trait ActorUnderTest {
     lazy val preProvisionedClients: Set[Client] = Set.empty
 
-    lazy val actor = TestActorRef(Props(new ClientStorage(preProvisionedClients)))
+    lazy val actor = TestActorRef(Props(new MemoryClientStorage(preProvisionedClients)))
   }
 
-  import jetonmatik.actor.ClientStorage._
+  import jetonmatik.actor.storage.ClientStorage._
 
   "ClientStorage ! Read" should "respond with Some if pre provisioned clientId specified" in new ActorUnderTest with Clients {
     override lazy val preProvisionedClients = clients

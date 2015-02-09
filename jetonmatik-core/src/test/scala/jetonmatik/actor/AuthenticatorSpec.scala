@@ -43,7 +43,7 @@ class AuthenticatorSpec
   }
 
   import jetonmatik.actor.Authenticator._
-  import jetonmatik.actor.ClientStorage._
+  import jetonmatik.actor.storage.ClientStorage._
 
   "Authenticator" should "authenticate existing client if secret is correct" in new ActorUnderTest with ClientData {
 

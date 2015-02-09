@@ -1,11 +1,8 @@
 package jetonmatik.server
 
-import java.nio.file.{Paths, Path}
-import java.time.Duration
-import java.util.concurrent.TimeUnit
 import com.typesafe.config.{ConfigFactory, Config}
-import jetonmatik.model.Client
-import scala.collection.JavaConverters._
+import jetonmatik.relational.DefaultRelationalStorageSettings
+import jetonmatik.{DefaultKeyStoreSettings, KeyStoreSettings, DefaultFileStorageSettings, StorageSettings}
 
 trait EndpointSettings {
   val interface: String
@@ -17,21 +14,6 @@ class DefaultEndpointSettings(config: Config) extends EndpointSettings {
   override val port: Int = config.getInt("port")
 }
 
-trait KeyStoreSettings {
-  val password: String
-  val path: Path
-  val keys: Map[String, String]
-}
-
-class DefaultKeyStoreSettings(config: Config) extends KeyStoreSettings {
-  override val password: String = config.getString("password")
-  override val path: Path = Paths.get(config.getString("path"))
-  override val keys: Map[String, String] = {
-    for (c <- config.getConfigList("keys").asScala)
-    yield c.getString("alias") -> c.getString("password")
-  }.toMap
-}
-
 trait ServerSettings {
   val realm: String
   val externalUrl: String
@@ -41,9 +23,9 @@ trait ServerSettings {
 
   val tokenGeneratorPoolSize: Int
 
-  val clientsFile: Option[Path]
-
   val keyStore: KeyStoreSettings
+
+  val storage: StorageSettings
 }
 
 object ServerSettings extends ServerSettings {
@@ -54,15 +36,19 @@ object ServerSettings extends ServerSettings {
   override val signatureKeyPairAlias: String = config.getString("signature-key-pair-alias")
 
   override val endpoint: EndpointSettings = new DefaultEndpointSettings(config.getConfig("endpoint"))
-
   override val tokenGeneratorPoolSize: Int = config.getInt("token-generator-pool-size")
-
-  override val clientsFile: Option[Path] = {
-    if (config.hasPath("clients-file"))
-      Some(Paths.get(config.getString("clients-file")))
-    else
-      None
-  }
-
   override val keyStore: KeyStoreSettings = new DefaultKeyStoreSettings(config.getConfig("key-store"))
+  override val storage: StorageSettings = {
+    val storageConfig = config.getConfig("storage")
+    val storageType = storageConfig.getString("storage-type")
+
+    storageType match {
+      case "memory" =>
+        new DefaultFileStorageSettings(storageConfig)
+      case "relational" =>
+        new DefaultRelationalStorageSettings(storageConfig)
+      case _ =>
+        throw new RuntimeException(s"Unsupported storage type: $storageType")
+    }
+  }
 }

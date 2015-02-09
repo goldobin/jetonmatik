@@ -36,7 +36,6 @@ class AuthorizerSpec
     val clientSecret = fakePassword
     val clientSecretHash = PasswordHash.createHash(clientSecret)
 
-    val clientName = fakeFullName
     val clientTokenTtl = fakeAccessTokenTtl
     val clientTokenTtlSeconds = clientTokenTtl.getSeconds
     val clientScope = fakeScopeSet()
@@ -44,7 +43,6 @@ class AuthorizerSpec
     val client = Client(
       id = clientId,
       secretHash = clientSecretHash,
-      name = clientName,
       scope = clientScope,
       tokenTtl = clientTokenTtl
     )

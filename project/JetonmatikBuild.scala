@@ -15,7 +15,8 @@ object JetonmatikBuild extends Build {
   lazy val root = Project(
     id = "jetonmatik",
     base = file("."),
-    aggregate = Seq(core, mysql, server)
+    aggregate = Seq(core, relational, server),
+    settings = addCommandAlias("relational-schema", "jetonmatik-relational/runMain jetonmatik.relational.Schema")
   )
 
   lazy val server = Project(
@@ -23,7 +24,7 @@ object JetonmatikBuild extends Build {
     base = file("jetonmatik-server"),
     dependencies = Seq(
       core % "compile;test->test",
-      mysql % "compile"
+      relational % "compile"
     ),
     settings = commonSettings ++ Revolver.settings ++ serverPackageSettings ++ Seq(
       mainClass in Compile := Some("jetonmatik.server.Boot"),
@@ -39,11 +40,14 @@ object JetonmatikBuild extends Build {
     )
   )
 
-  lazy val mysql = Project(
-    id = "jetonmatik-mysql",
-    base = file("jetonmatik-mysql"),
+  lazy val relational = Project(
+    id = "jetonmatik-relational",
+    base = file("jetonmatik-relational"),
+    dependencies = Seq(
+      core % "compile;test->test"
+    ),
     settings = commonSettings ++ Seq(
-      libraryDependencies ++= Dependencies.mysql
+      libraryDependencies ++= Dependencies.relational
     )
   )
 }
