@@ -43,7 +43,7 @@ object ServerSettings extends ServerSettings {
     val storageType = storageConfig.getString("storage-type")
 
     storageType match {
-      case "memory" =>
+      case "file" =>
         new DefaultFileStorageSettings(storageConfig)
       case "relational" =>
         new DefaultRelationalStorageSettings(storageConfig)
