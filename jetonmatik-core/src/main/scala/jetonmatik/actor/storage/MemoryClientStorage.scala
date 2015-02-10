@@ -9,7 +9,8 @@ object MemoryClientStorage {
 
 class MemoryClientStorage(clients: Set[Client]) extends Actor with ActorLogging {
 
-  import jetonmatik.actor.storage.ClientStorage._
+  import Storage._
+  import ClientStorage._
 
   val predefinedClientsMap = (clients map { c => c.id -> c}).toMap
 
@@ -17,6 +18,6 @@ class MemoryClientStorage(clients: Set[Client]) extends Actor with ActorLogging 
     case LoadClient(clientId) => sender() ! ClientLoaded(predefinedClientsMap.get(clientId))
     case SaveClient(_) =>
       log.warning("Save client operation is not supported")
-      sender() ! StorageFailure
+      sender() ! OperationFailed
   }
 }

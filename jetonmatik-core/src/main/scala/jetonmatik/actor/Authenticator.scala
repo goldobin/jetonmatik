@@ -1,6 +1,7 @@
 package jetonmatik.actor
 
 import akka.actor._
+import jetonmatik.actor.storage.{ClientStorage, Storage}
 import jetonmatik.model.{Client, ClientCredentials}
 import jetonmatik.util.PasswordHash
 
@@ -21,7 +22,7 @@ object Authenticator {
 class Authenticator extends Actor with ActorLogging {
   this: AuthenticationWorkerProvider =>
 
-  import jetonmatik.actor.Authenticator._
+  import Authenticator._
 
   override def receive: Receive = {
     case msg: Authenticate =>
@@ -48,9 +49,12 @@ case class AuthenticationWorker(
   extends Actor
   with ActorLogging {
 
-  import jetonmatik.actor.AuthenticationWorker._
-  import jetonmatik.actor.Authenticator._
-  import jetonmatik.actor.storage.ClientStorage._
+  import AuthenticationWorker._
+  import Authenticator._
+  import Storage._
+  import ClientStorage._
+
+
 
   override def receive: Receive = {
     case Authenticate(credentials) => context.become(loadAndValidateClient(credentials, sender()))
@@ -81,7 +85,7 @@ case class AuthenticationWorker(
         log.debug(s"The client ${credentials.id} successfully authenticated")
         stop()
 
-      case StorageFailure =>
+      case OperationFailed =>
         timeoutCancelable.cancel()
 
         originalSender ! Authenticator.FailedToAuthenticate

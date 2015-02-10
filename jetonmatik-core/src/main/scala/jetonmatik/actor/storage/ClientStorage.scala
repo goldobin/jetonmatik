@@ -8,6 +8,4 @@ object ClientStorage {
 
   case class SaveClient(client: Client)
   case object ClientSaved
-
-  case object StorageFailure
 }
