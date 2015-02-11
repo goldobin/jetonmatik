@@ -3,10 +3,10 @@ package jetonmatik.server.http
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import jetonmatik.server.actor.{Authorizer, Authenticator}
-import jetonmatik.server.model.{ClientCredentials, Client}
+import jetonmatik.actor.{Authorizer, Authenticator}
+import jetonmatik.model.{ClientCredentials, Client}
+import jetonmatik.provider.FormattedPublicKeyProvider
 import jetonmatik.server.model.oauth.{TokenResponse, TokenRequest}
-import jetonmatik.server.service.FormattedPublicKeyProvider
 import spray.routing._
 import spray.routing.authentication.{BasicAuth, UserPass}
 import spray.routing.directives._

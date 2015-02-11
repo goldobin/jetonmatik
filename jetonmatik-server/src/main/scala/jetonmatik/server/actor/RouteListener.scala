@@ -5,9 +5,13 @@ import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{OneForOneStrategy, Actor, ActorRefFactory, Props}
 import akka.routing.RoundRobinPool
+import jetonmatik.FileStorageSettings
+import jetonmatik.actor.storage.{RelationalClientStorage, MemoryClientStorage}
+import jetonmatik.actor.{Authorizer, Authenticator, AccessTokenGenerator}
+import jetonmatik.provider.{PemFormattedPublicKeyProvider, YamlClientsProvider}
+import jetonmatik.relational.{RelationalStorageSettings, Connection}
 import jetonmatik.server.http.AuthorizerHttpService
 import jetonmatik.server.ServerSettings
-import jetonmatik.server.service.{PemFormattedPublicKeyProvider, YamlClientsProvider}
 import jetonmatik.util.KeyStoreFactory
 
 object RouteListener {
@@ -40,15 +44,14 @@ class RouteListener(settings: ServerSettings)
     .obtainKey(signatureKeyPairAlias, signaturePrivateKeyPassword)
     .asInstanceOf[RSAPrivateKey]
 
-  val clientStorage = settings.clientsFile match {
-    case Some(path) =>
-      context.actorOf(
-        ClientStorage.props(YamlClientsProvider(path).obtainClients()),
-        "client-storage")
-    case None =>
-      // TODO: This should be removed as soon as additional storage support added
-      throw new UnsupportedOperationException("Clients file configuration is mandatory for this version")
+  val clientStorageProps = settings.storage match {
+    case settings: FileStorageSettings =>
+      MemoryClientStorage.props(YamlClientsProvider(settings.file).obtainClients())
+    case settings: RelationalStorageSettings =>
+      RelationalClientStorage.props(new Connection(settings))
   }
+
+  val clientStorage = context.actorOf(clientStorageProps, "client-storage")
 
   val accessTokenGenerator = context.actorOf(
     AccessTokenGenerator
