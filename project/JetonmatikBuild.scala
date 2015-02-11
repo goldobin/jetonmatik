@@ -16,7 +16,7 @@ object JetonmatikBuild extends Build {
     id = "jetonmatik",
     base = file("."),
     aggregate = Seq(core, relational, server),
-    settings = addCommandAlias("relational-schema", "jetonmatik-relational/runMain jetonmatik.relational.Schema")
+    settings = addCommandAlias("relationalSchema", "jetonmatik-relational/runMain jetonmatik.relational.Schema")
   )
 
   lazy val server = Project(

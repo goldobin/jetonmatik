@@ -36,6 +36,7 @@ object Dependencies {
 
     val c3p0            = "c3p0"                  %  "c3p0"                   % "0.9.1.2"
     val mysqlDriver     = "mysql"                 %  "mysql-connector-java"   % "5.1.34"
+    val postgresDriver  = "postgresql"            % "postgresql"              % "9.1-901-1.jdbc4"
   }
 
   object Test {
@@ -78,6 +79,7 @@ object Dependencies {
     slick,
     c3p0,
     mysqlDriver,
+    postgresDriver,
     log4jOverSlf4j,
     Test.scalatest,
     Test.akkaTestKit

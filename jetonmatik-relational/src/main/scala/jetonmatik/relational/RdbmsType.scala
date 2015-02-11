@@ -6,17 +6,17 @@ object RdbmsType extends Enumeration {
   type RdbmsType = Value
   val MySql = Value("mysql")
   val MariaDb = Value("mariadb")
-  val Postgres = Value("postgres")
+  val PostgreSql = Value("postgresql")
 
   def toDriver(rdbmsType: RdbmsType): JdbcDriver = rdbmsType match {
     case MySql => MySQLDriver
     case MariaDb => MySQLDriver
-    case Postgres => PostgresDriver
+    case PostgreSql => PostgresDriver
   }
 
   def toJdbcDriverName(rdbmsType: RdbmsType): String = rdbmsType match {
     case MySql => "com.mysql.jdbc.Driver"
     case MariaDb => "org.mariadb.jdbc.Driver"
-    case Postgres => "org.postgresql.Driver"
+    case PostgreSql => "org.postgresql.Driver"
   }
 }
